@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package luckycharms.proto.remote;
+
+message Test {
+    int32 a = 1;
+    string b = 2;
+    bool c = 3;
+}
+
+message TestCollection {
+    repeated Test tests = 1;
+    int32 page_size = 2;
+    bool next_page = 3;
+}
