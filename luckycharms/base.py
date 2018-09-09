@@ -4,7 +4,6 @@ import json
 
 from flask import g, request
 from flask_exceptions.extension import BadRequest, UnsupportedMedia
-from google.protobuf.message import DecodeError
 from marshmallow import Schema, ValidationError
 from marshmallow import fields as _fields
 from marshmallow import (post_dump, post_load, pre_dump, pre_load,
@@ -12,6 +11,11 @@ from marshmallow import (post_dump, post_load, pre_dump, pre_load,
 
 MAX_PAGE_SIZE = 25
 MAX_PAGES = 50
+try:
+    from google.protobuf.message import DecodeError
+    PROTBUF_IMPORTED = True
+except ImportError:
+    PROTBUF_IMPORTED = False
 
 
 class ErrorHandlingSchema(Schema):
@@ -57,8 +61,10 @@ class BaseModelSchema(ErrorHandlingSchema):
         if 'load_many' not in self.config['querystring_schemas']:
             self.config['querystring_schemas']['load_many'] = QuerystringCollection
 
-        # if self.config['paged'] and not self.config.get('ordering'):
-        #     raise ConfigurationException('ordering must be defined when paged=True')
+        if self.config.get('protobuffers') and not PROTBUF_IMPORTED:
+            raise Exception(
+                "protobuffer libraries not installed; please install"
+                " luckycharms with extra 'proto' (for example, pip install luckycharms[proto])")
 
         self.set_querystring_schema(**kwargs)
 
@@ -152,7 +158,6 @@ class BaseModelSchema(ErrorHandlingSchema):
     @post_dump(pass_many=True)
     def post_dump_func(self, data, many):
         """Format response depending on whether it is a resource or collection."""
-
         def handle_collections(data):
             """Format response according to whether its a collection or resource request."""
             if data and many:
