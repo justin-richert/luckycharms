@@ -547,6 +547,11 @@ def test_last_modified_hook():
         }
 
 
+@pytest.mark.parametrize(
+    'content_type',
+    [{'content_type': 'application/octet-stream'}],
+    indirect=True
+)
 def test_proto_rendering():
 
     class TestSchema(BaseModelSchema):
@@ -573,8 +578,6 @@ def test_proto_rendering():
             'b': 'One',
             'c': True
         }
-
-    app.app_ctx_globals_class.content_type = 'application/octet-stream'
 
     with app.test_request_context(
             '/',
