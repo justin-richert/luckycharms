@@ -1,17 +1,37 @@
 """Base schema file."""
 # pylint: disable=no-self-use
 import json
+import os
 
 from flask import g, request
 from flask_exceptions.extension import BadRequest, UnsupportedMedia
-from google.protobuf.message import DecodeError
 from marshmallow import Schema, ValidationError
 from marshmallow import fields as _fields
 from marshmallow import (post_dump, post_load, pre_dump, pre_load,
                          validate, validates, validates_schema)
 
-MAX_PAGE_SIZE = 25
-MAX_PAGES = 50
+try:
+    from google.protobuf.message import DecodeError
+    PROTBUF_IMPORTED = True
+except ImportError:
+    PROTBUF_IMPORTED = False
+
+# Read in environment variables for configuration
+_MAX_PAGE_SIZE_ENV_VAR = os.environ.get('LUCKYCHARMS_MAX_PAGE_SIZE')
+try:
+    MAX_PAGE_SIZE = int(_MAX_PAGE_SIZE_ENV_VAR)
+except (ValueError, TypeError):
+    MAX_PAGE_SIZE = 25
+
+
+_MAX_PAGES_ENV_VAR = os.environ.get('LUCKYCHARMS_MAX_PAGES')
+try:
+    MAX_PAGES = int(_MAX_PAGES_ENV_VAR)
+except (ValueError, TypeError):
+    MAX_PAGES = 50
+
+_SHOW_ERR_ENV_VAR = os.environ.get('LUCKYCHARMS_SHOW_ERRORS', 'False')
+SHOW_ERRORS = _SHOW_ERR_ENV_VAR in ['True', 'true']
 
 
 class ErrorHandlingSchema(Schema):
@@ -20,13 +40,14 @@ class ErrorHandlingSchema(Schema):
         """Overridden method to return 400s."""
         msg = ''
         # v may be a dictionary instead of a list
-        for key, value in error.messages.items():
-            if isinstance(value, dict):
-                val = str(value)
-            else:
-                val = ', '.join(value)
-            msg += '{}: {};'.format(key, val)
-        msg = msg[:-1]
+        if SHOW_ERRORS:
+            for key, value in error.messages.items():
+                if isinstance(value, dict):
+                    val = str(value)
+                else:
+                    val = ', '.join(value)
+                msg += '{}: {};'.format(key, val)
+            msg = msg[:-1]
 
         code = error.kwargs.get('error_code')
         if code == 415:
@@ -57,8 +78,10 @@ class BaseModelSchema(ErrorHandlingSchema):
         if 'load_many' not in self.config['querystring_schemas']:
             self.config['querystring_schemas']['load_many'] = QuerystringCollection
 
-        # if self.config['paged'] and not self.config.get('ordering'):
-        #     raise ConfigurationException('ordering must be defined when paged=True')
+        if self.config.get('protobuffers') and not PROTBUF_IMPORTED:
+            raise Exception(
+                "protobuffer libraries not installed; please install"
+                " luckycharms with extra 'proto' (for example, pip install luckycharms[proto])")
 
         self.set_querystring_schema(**kwargs)
 
@@ -152,7 +175,6 @@ class BaseModelSchema(ErrorHandlingSchema):
     @post_dump(pass_many=True)
     def post_dump_func(self, data, many):
         """Format response depending on whether it is a resource or collection."""
-
         def handle_collections(data):
             """Format response according to whether its a collection or resource request."""
             if data and many:

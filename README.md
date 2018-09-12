@@ -16,8 +16,17 @@ Configuration of the behavior of each schema class is controlled by defining a d
 
 - **protobuffers**: [`dict`] - A dictionary containing the keys load, dump, load_many, and dump_many. These keys are used to deserialize (load) and serialize (dump) protobuffer data in the event that the Content-Type header is set to application/octet-stream. The keys that end in "many" are used if many=True is supplied when creating an instance of a schema. If not passed, protobuffer loading/rendering of the data will not be available.
 
-- **querystring_schemas**: [`dict`] - A dictionary containing the keys load and load_many. These keys are used to deserialize and validate the querystring on a GET request. If not supplied, these schemas default to QuerystringResource and QuerystringCollection for the keys mentioned, respectively. QuerystringResource accepts and validates the parameter fields only which is used to indicate which fields are desired in the response. QuerystringCollection accepts and validates the parameters fields, page (if paging is set to True), order_by (which accepts any valid field name for the schema), and order (which accepts any valid order for that field, such as asc or desc).
-Querystring schemas can be passed into 
+- **querystring_schemas**: [`dict`] - A dictionary containing the keys load and load_many. These keys are used to deserialize and validate the querystring on a GET request. If not supplied, these schemas default to QuerystringResource and QuerystringCollection for the keys mentioned, respectively. QuerystringResource accepts and validates the parameter fields only which is used to indicate which fields are desired in the response. QuerystringCollection accepts and validates the parameters fields, page (if paged is set to True), order_by (which accepts any valid field name for the schema), and order (which accepts any valid order for that field, such as asc or desc).
+
+
+##### Configuring the module
+There are three aspects of the luckycharms module that can be configured with environment variables:
+
+`LUCKYCHARMS_SHOW_ERRORS` - Accepts the values 'True' or 'False'. If set to 'True', HTTP/400 responses will contain the reason a request was invalid. If set to 'False', only the error code will be returned. Defaults to 'False'.
+
+`LUCKYCHARMS_MAX_PAGES` - Configures the max page number a client may request for a particular resource collection. Defaults to '50'.
+
+`LUCKYCHARMS_MAX_PAGE_SIZE` - Configures the maximum number of items a client may request per page. Defaults to '25'.
 
 
 ### Example Use
