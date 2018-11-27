@@ -192,6 +192,16 @@ def test_marshmallow_parameters():
             'testd': 1.01
         }
 
+    # if json is badly formed this should be a 400
+    with app.test_request_context(
+            '/',
+            method='POST',
+            data="{'d': 1000}",  # wrong quotes for an inlined json
+            headers={'Content-Type': 'application/json'}
+            ):
+        with pytest.raises(flask_exceptions.BadRequest) as excinfo:
+            business_logic()
+
 
 def test_marshmallow_hack():
 

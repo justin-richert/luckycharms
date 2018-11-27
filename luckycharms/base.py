@@ -160,7 +160,10 @@ class BaseModelSchema(ErrorHandlingSchema):
     def pre_load_func(self, data, many):  # pylint: disable=unused-argument
         """Do initial load in of data from request depending on content type header."""
         if request.headers['Content-Type'].startswith('application/json'):
-            data = json.loads(data) if data else {}
+            try:
+                data = json.loads(data) if data else {}
+            except json.JSONDecodeError:
+                raise BadRequest(message='Invalid json data')
         elif request.headers['Content-Type'].startswith(  # pragma: no branch
                 'application/octet-stream'):
             transformer = self.config['protobuffers']['load_many'] if self.many \
