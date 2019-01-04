@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "> running pycodestyle..."
-pycodestyle --max-line-length=100 --exclude='.eggs,build,dist,*_pb2.py' .
+pycodestyle --max-line-length=100 --exclude='.eggs,build,dist,*_pb2.py,venv' .
 if [ $? != 0 ]
 then
     exit 1
@@ -11,7 +11,7 @@ fi
 echo
 
 echo "> running flake8..."
-flake8 --exclude='.eggs,build,dist,*_pb2.py' --max-line-length=100
+flake8 --exclude='.eggs,build,dist,*_pb2.py,venv' --max-line-length=100
 if [ $? != 0 ]
 then
     exit 1
@@ -32,7 +32,7 @@ fi
 echo
 
 echo "> running isort..."
-isort -c --diff
+isort -c --diff -sg venv*
 if [ $? != 0 ]; then
     exit 1
 else
