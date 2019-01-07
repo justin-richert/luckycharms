@@ -456,6 +456,15 @@ def test_ordering_validation():
         assert excinfo.value.message == '_schema: Not a valid order for field.'
 
     class TestSchema(BaseModelSchema):
+        a = fields.Int(order=('sideways',))
+
+    with pytest.raises(Exception) as excinfo:
+        @TestSchema(many=True)
+        def business_logic(fields, page, page_size, order, order_by):
+            pass  # pragma: no cover
+    assert str(excinfo.value) == 'Invalid order option "sideways" provided for field a.'
+
+    class TestSchema(BaseModelSchema):
         a = fields.Int()
 
     @TestSchema(many=True)
