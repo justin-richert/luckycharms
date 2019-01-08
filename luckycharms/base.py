@@ -36,11 +36,17 @@ SHOW_ERRORS = _SHOW_ERR_ENV_VAR in ['True', 'true']
 
 class ErrorHandlingSchema(Schema):
     """Base schema class that knows how to handle errors."""
+
+    def __init__(self, *args, **kwargs):
+        """Extended init method for ErrorHandlingSchema to initialize with configuration."""
+        super(Schema, self).__init__(*args, **kwargs)
+        self.show_errors = getattr(self, 'show_errors', SHOW_ERRORS)
+
     def handle_error(self, error, data):
         """Overridden method to return 400s."""
         msg = ''
         # v may be a dictionary instead of a list
-        if SHOW_ERRORS:
+        if self.show_errors:
             for key, value in error.messages.items():
                 if isinstance(value, dict):
                     val = str(value)
