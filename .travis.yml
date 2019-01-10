@@ -6,6 +6,6 @@ env:
 install:
   - pip install -r requirements-dev.txt -r requirements.txt
 script:
-  - ./linters.sh && pytest tests/ --cov=luckycharms/ --cov-report term-missing
+  - ./linters.sh && pytest tests/ --cov=luckycharms/ --cov-report term-missing --ignore=tests/custom_renderers/test_pb2.py
 after_success:
   - coveralls

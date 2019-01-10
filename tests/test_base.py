@@ -7,16 +7,17 @@ import flask_exceptions
 import pytest
 from marshmallow import RAISE, Schema, ValidationError, fields, validates
 
+from custom_renderers import test
+from custom_renderers.test import RendererTest
+
 os.environ['LUCKYCHARMS_SHOW_ERRORS'] = 'true'
+
+from luckycharms import renderers  # isort:skip  # noqa
+
 
 from luckycharms.base import (BaseModelSchema,  # isort:skip  # noqa
                               QuerystringCollection, QuerystringResource)
 
-
-try:
-    from protobuffers import proto
-except ImportError:
-    pass
 
 app = flask.Flask(__name__)
 app.app_ctx_globals_class.content_type = 'application/json'
@@ -141,6 +142,10 @@ def test_marshmallow_parameters():
         b = fields.String()
         c = fields.Boolean()
         d = fields.Float()
+
+        class Meta:
+            dump_only = ('a',)
+            # render_module = renderers.BaseRenderer
 
     @TestSchema(
         many=False,
@@ -438,7 +443,7 @@ def test_paging_validation():
     with app.test_request_context('/?invalid_arg=value'):
         with pytest.raises(flask_exceptions.BadRequest) as excinfo:
             business_logic()
-        assert excinfo.value.message == '_schema: invalid_arg is an invalid querystring argument.'
+        assert excinfo.value.message == 'invalid_arg: Unknown field.'
 
     with app.test_request_context('/?page=*&fields=*'):
         with pytest.raises(flask_exceptions.BadRequest) as excinfo:
@@ -562,64 +567,33 @@ def test_last_modified_hook():
         }
 
 
-@pytest.mark.parametrize(
-    'content_type',
-    [{'content_type': 'application/octet-stream'}],
-    indirect=True
-)
-def test_proto_rendering():
+def test_custom_render_module():
 
     class TestSchema(BaseModelSchema):
         a = fields.Int()
         b = fields.String()
-        c = fields.Boolean()
 
-        config = {
-            'ordering': [
-                ('a', ('asc',))
-            ],
-            'protobuffers': {
-                'load': proto.Test(),
-                'dump': proto.Test(),
-                'load_many': proto.Test(),
-                'dump_many': proto.TestCollection()
-            }
-        }
+        class Meta:
+            render_module = RendererTest
 
     @TestSchema()
     def business_logic(*args, **kwargs):
         return {
             'a': 1,
-            'b': 'One',
-            'c': True
+            'b': 'Hi.'
         }
 
     with app.test_request_context(
-            '/',
-            method='POST',
-            data=proto.Test().dict_to_message({'a': 2, 'b': 'Two', 'c': False}).SerializeToString(),
-            headers={
-                'Content-Type': 'application/octet-stream',
-                'Accepts': 'application/octet-stream'
-            }):
+        '/',
+        method='POST',
+        data=test.RendererTest().dict_to_message(
+            {'a': 2, 'b': 'Two', 'c': False}).SerializeToString(),
+        headers={
+            'Content-Type': 'application/octet-stream',
+            'Accepts': 'application/octet-stream'
+        }
+    ):
         result = business_logic()
         assert isinstance(result, bytes)
-        result = proto.Test().proto_to_dict(result)
-        assert result == {
-            'a': 1,
-            'b': 'One',
-            'c': True
-        }
-
-    proto_data = proto.Test().dict_to_message({'a': 2, 'b': 'Two', 'c': False}).SerializeToString()
-    with app.test_request_context(
-            '/',
-            method='POST',
-            data=proto_data[:-1],
-            headers={
-                'Content-Type': 'application/octet-stream',
-                'Accepts': 'application/octet-stream'
-            }):
-        with pytest.raises(flask_exceptions.BadRequest) as excinfo:
-            business_logic()
-        assert excinfo.value.message == 'Invalid protocol buffer data'
+        result = test.RendererTest().proto_to_dict(result)
+        assert result

@@ -10,11 +10,7 @@ from marshmallow import fields as _fields
 from marshmallow import (post_dump, post_load, pre_dump, pre_load,
                          validate, validates, validates_schema)
 
-try:
-    from google.protobuf.message import DecodeError
-    PROTBUF_IMPORTED = True
-except ImportError:
-    PROTBUF_IMPORTED = False
+from . import renderers
 
 # Read in environment variables for configuration
 _MAX_PAGE_SIZE_ENV_VAR = os.environ.get('LUCKYCHARMS_MAX_PAGE_SIZE')
@@ -65,6 +61,10 @@ class BaseModelSchema(ErrorHandlingSchema):
         """Extended init method for BaseModelSchema to initialize with configuration."""
         super(BaseModelSchema, self).__init__(*args, **kwargs)
 
+        # pylint: disable=no-member
+        if self.opts.render_module == json:
+            self.opts.render_module = renderers.BaseRenderer
+
         default_config = {
             'paged': True,
             'querystring_schemas': {
@@ -78,11 +78,6 @@ class BaseModelSchema(ErrorHandlingSchema):
         if 'load_many' not in self.config['querystring_schemas']:
             self.config['querystring_schemas']['load_many'] = QuerystringCollection
 
-        if self.config.get('protobuffers') and not PROTBUF_IMPORTED:
-            raise Exception(
-                "protobuffer libraries not installed; please install"
-                " luckycharms with extra 'proto' (for example, pip install luckycharms[proto])")
-
         self.set_querystring_schema(**kwargs)
 
     def __call__(self, decorated):
@@ -93,9 +88,8 @@ class BaseModelSchema(ErrorHandlingSchema):
     def function_wrapper(self, **kwargs):
         """Wrapper to be returned by __call__ that will wrap all decorated view helpers."""
 
-        # Workaround until marshmallow provides a way to specify fields at serialization time.
         self.context = {}
-        # only = None
+        # Workaround until marshmallow provides a way to specify fields at serialization time.
         self._types_seen = set()
         self.only = None
         # Load with querystring schemas for GET requests
@@ -115,12 +109,12 @@ class BaseModelSchema(ErrorHandlingSchema):
 
         # Load with model schemas for POST, PUT requests
         else:
-            params = self.load(request.data, many=self.many)
+            params = self.loads(request.data, many=self.many)
 
         kwargs.update(params)
 
         # Call decorated function
-        data = self.dump(self._decorated(**kwargs))
+        data = self.dumps(self._decorated(**kwargs))
 
         return data
 
@@ -156,24 +150,6 @@ class BaseModelSchema(ErrorHandlingSchema):
             g.last_modified = data.updated_dt or getattr(data, 'created_dt', None)
         return data
 
-    @pre_load(pass_many=True)
-    def pre_load_func(self, data, many):  # pylint: disable=unused-argument
-        """Do initial load in of data from request depending on content type header."""
-        if request.headers['Content-Type'].startswith('application/json'):
-            try:
-                data = json.loads(data) if data else {}
-            except json.JSONDecodeError:
-                raise BadRequest(message='Invalid json data')
-        elif request.headers['Content-Type'].startswith(  # pragma: no branch
-                'application/octet-stream'):
-            transformer = self.config['protobuffers']['load_many'] if self.many \
-                else self.config['protobuffers']['load']
-            try:
-                data = transformer.proto_to_dict(data)
-            except DecodeError:
-                raise BadRequest(message='Invalid protocol buffer data')
-        return data
-
     # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
     @post_dump(pass_many=True)
     def post_dump_func(self, data, many):
@@ -193,27 +169,7 @@ class BaseModelSchema(ErrorHandlingSchema):
                     data = {'data': data}
             return data
 
-        def handle_empty(data):
-            """Handle data that is falsey."""
-            return data or ''
-
-        def process_for_mimetype(data):
-            """Serialize data per client mimetype request."""
-            if data:
-                if g.content_type == 'application/json':
-                    data = json.dumps(data)
-                elif g.content_type == 'application/octet-stream':  # pragma: no branch
-                    transformer = self.config['protobuffers']['dump_many'] if many \
-                        else self.config['protobuffers']['dump']
-                    data = transformer.dict_to_message(data).SerializeToString()
-            return data
-
-        return process_for_mimetype(handle_empty(handle_collections(data)))
-
-    @post_load
-    def post_load_func(self, data):
-        """Implemented for convention."""
-        return data
+        return handle_collections(data)
 
 
 class QuerystringResource(ErrorHandlingSchema):
@@ -238,10 +194,6 @@ class QuerystringResource(ErrorHandlingSchema):
         for key, val in args:
             data.append((key, val))
         data = {k: v for k, v in data}
-
-        for k in data.keys():
-            if k not in self.fields:
-                raise ValidationError(f'{k} is an invalid querystring argument.')
 
         return data
 
