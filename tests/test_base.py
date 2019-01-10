@@ -323,15 +323,8 @@ def test_collections():
         }
 
     class TestSchema(BaseModelSchema):
-        a = fields.Int()
-        b = fields.String()
-
-        config = {
-            'ordering': [
-                ('a', ('desc',)),
-                ('b', ('asc', 'desc'))
-            ]
-        }
+        a = fields.Int(order=('desc',))
+        b = fields.String(order=('asc', 'desc'))
 
     @TestSchema(many=True)
     def business_logic(fields, page, page_size, order, order_by):
@@ -410,16 +403,9 @@ def test_collections():
 
 def test_paging_validation():
     class TestSchema(BaseModelSchema):
-        a = fields.Int()
-        b = fields.String()
+        a = fields.Int(order=('desc',))
+        b = fields.String(order=('asc', 'desc'))
         c = fields.Boolean()
-
-        config = {
-            'ordering': [
-                ('a', ('desc',)),
-                ('b', ('asc', 'desc'))
-            ]
-        }
 
     @TestSchema(many=True)
     def business_logic(fields, page, page_size, order, order_by):
@@ -452,14 +438,8 @@ def test_paging_validation():
 def test_ordering_validation():
 
     class TestSchema(BaseModelSchema):
-        a = fields.Int()
+        a = fields.Int(order=('desc',))
         b = fields.String()
-
-        config = {
-            'ordering': [
-                ('a', ('desc',))
-            ]
-        }
 
     @TestSchema(many=True)
     def business_logic(fields, page, page_size, order, order_by):
@@ -474,6 +454,32 @@ def test_ordering_validation():
         with pytest.raises(flask_exceptions.BadRequest) as excinfo:
             business_logic()
         assert excinfo.value.message == '_schema: Not a valid order for field.'
+
+    class TestSchema(BaseModelSchema):
+        a = fields.Int(order=('sideways',))
+
+    with pytest.raises(Exception) as excinfo:
+        @TestSchema(many=True)
+        def business_logic(fields, page, page_size, order, order_by):
+            pass  # pragma: no cover
+    assert str(excinfo.value) == 'Invalid order option "sideways" provided for field a.'
+
+    class TestSchema(BaseModelSchema):
+        a = fields.Int()
+
+    @TestSchema(many=True)
+    def business_logic(fields, page, page_size, order, order_by):
+        pass  # pragma: no cover
+
+    with app.test_request_context('/?order_by=a'):
+        with pytest.raises(flask_exceptions.BadRequest) as excinfo:
+            business_logic()
+        assert excinfo.value.message == '_schema: order_by is an invalid querystring argument.'
+
+    with app.test_request_context('/?order=asc'):
+        with pytest.raises(flask_exceptions.BadRequest) as excinfo:
+            business_logic()
+        assert excinfo.value.message == '_schema: order is an invalid querystring argument.'
 
 
 def test_nested_field_error_message():

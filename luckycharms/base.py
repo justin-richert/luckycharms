@@ -136,7 +136,14 @@ class BaseModelSchema(ErrorHandlingSchema):
         if many and self.config['paged']:
             querystring_schema = self.config['querystring_schemas']['load_many']
             # Pass ordering info from Config class on schema
-            ordering = self.config.get('ordering')
+            ordering = []
+            for name, field in self.fields.items():
+                if field.metadata.get('order'):
+                    for entry in field.metadata['order']:
+                        if entry not in ('asc', 'desc'):
+                            raise Exception(
+                                f'Invalid order option "{entry}" provided for field {field.name}.')
+                    ordering.append((name, field.metadata['order']))
             self.querystring_schema = querystring_schema(ordering=ordering)
         else:
             querystring_schema = self.config['querystring_schemas']['load']
