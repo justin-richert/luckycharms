@@ -289,10 +289,16 @@ class QuerystringCollection(QuerystringResource):
     @validates_schema(skip_on_field_errors=True)
     def validate_all_pages(self, data):
         """Validate number of fields if page=* is passed."""
+        unconditional_paging = False
+        config = getattr(self, 'config', None)
+        if config:
+            unconditional_paging = bool(config.get('unconditional_paging'))
+
         if data['page'] == '*':
-            fields = data['fields'].split(',')
-            if data['fields'] == '*' or len(fields) > 2:
-                raise ValidationError('Maximum two fields allowed for page=*.')
+            if not unconditional_paging:
+                fields = data['fields'].split(',')
+                if data['fields'] == '*' or len(fields) > 2:
+                    raise ValidationError('Maximum two fields allowed for page=*.')
 
     @validates_schema
     def validate_ordering(self, data):
