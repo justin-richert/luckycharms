@@ -435,6 +435,31 @@ def test_paging_validation():
         business_logic()
 
 
+def test_unconditional_paging_validation():
+    """Test the unconditional_paging configuration."""
+
+    class UnconditionalPagingQuerystringCollection(QuerystringCollection):
+        """Custom Querystring Collection Schema that allows unconditional paging."""
+        config = {'unconditional_paging': True}
+
+    class TestSchema(BaseModelSchema):
+        a = fields.Int(order=('desc',))
+        b = fields.String(order=('asc', 'desc'))
+        c = fields.Boolean()
+
+        config = {
+            'querystring_schemas': {
+                'load_many': UnconditionalPagingQuerystringCollection,
+            }
+        }
+
+    @TestSchema(many=True)
+    def business_logic(fields, page, page_size, order, order_by):
+        pass  # pragma: no cover
+
+    with app.test_request_context('/?page=*&fields=*'):
+        business_logic()
+
 def test_ordering_validation():
 
     class TestSchema(BaseModelSchema):

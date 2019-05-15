@@ -18,6 +18,14 @@ Configuration of the behavior of each schema class is controlled by defining a d
 
 - **querystring_schemas**: [`dict`] - A dictionary containing the keys load and load_many. These keys are used to deserialize and validate the querystring on a GET request. If not supplied, these schemas default to QuerystringResource and QuerystringCollection for the keys mentioned, respectively. QuerystringResource accepts and validates the parameter fields only which is used to indicate which fields are desired in the response. QuerystringCollection accepts and validates the parameters fields, page (if paged is set to True), order_by (which accepts any valid field name for the schema), and order (which accepts any valid order for that field, such as asc or desc).
 
+> **Special Case:** A custom `QuerystringCollection` subclass may set a `config` value for `unconditional_paging`.
+>
+> ```python
+> class CustomQuerystringCollection(QuerystringCollection):
+>     config = {'unconditional_paging': True}
+> ```
+>
+> If `unconditional_paging` is `True` for a `QuerystringCollection`, the "all pages" (`page='*'`) validation is skipped.
 
 ##### Configuring the module
 There are three aspects of the luckycharms module that can be configured with environment variables:
