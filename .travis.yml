@@ -6,6 +6,6 @@ env:
 install:
   - pip install -r requirements-dev.txt -r requirements.txt
 script:
-  - ./linters.sh && pytest tests/ --cov=luckycharms/ --cov-report term-missing
+  - git checkout $TRAVIS_BRANCH && ./linters.sh && pytest tests/ --cov=luckycharms/ --cov-report term-missing
 after_success:
   - coveralls
