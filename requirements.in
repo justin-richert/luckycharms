@@ -1,3 +1,4 @@
 flask-exceptions
+jinja2>=2.10.1
 marshmallow==3.0.0b13
 protobuf

@@ -460,6 +460,7 @@ def test_unconditional_paging_validation():
     with app.test_request_context('/?page=*&fields=*'):
         business_logic()
 
+
 def test_ordering_validation():
 
     class TestSchema(BaseModelSchema):
