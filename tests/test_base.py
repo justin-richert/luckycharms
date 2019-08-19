@@ -132,6 +132,33 @@ def test_querystring_schemas():
     assert isinstance(test_schema.querystring_schema, QuerystringCollection)
     assert test_schema.querystring_schema.allowed_fields == {'a'}
 
+    class TestQuerystringSchema(QuerystringResource):
+
+        a = fields.List(fields.String())
+        b = fields.String()
+
+    class TestSchema(BaseModelSchema):
+
+        a = fields.List(fields.String())
+        b = fields.Integer()
+
+        config = {
+            "paged": False,
+            "querystring_schemas": {
+                "load": TestQuerystringSchema
+            }
+        }
+
+    @TestSchema()
+    def business_logic(*args, **kwargs):
+        return kwargs
+
+    with app.test_request_context('/?a[]=1&a[]=2&b=3'):
+        data = json.loads(business_logic())
+
+    assert data["a"] == ["1", "2"]
+    assert data["b"] == 3
+
 
 def test_marshmallow_parameters():
     """Show that schemas are still fully functioning marshmallow schemas."""
