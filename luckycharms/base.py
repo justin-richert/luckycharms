@@ -1,5 +1,6 @@
 """Base schema file."""
 # pylint: disable=no-self-use
+import copy
 import json
 import os
 
@@ -100,7 +101,8 @@ class BaseModelSchema(ErrorHandlingSchema):
         self.only = None
         # Load with querystring schemas for GET requests
         if request.method == 'GET':
-            params = self.querystring_schema.load(request.args.items())
+
+            params = self.querystring_schema.load((request.args.items(), request.args.lists()))
 
             # Set serialization fields
             if params['fields'] != "*":
@@ -241,14 +243,20 @@ class QuerystringResource(ErrorHandlingSchema):
     @pre_load
     def parse_querystring(self, args):
         """Parse arguments from querystring and validate that there aren't any extra args."""
-        data = []
-        for key, val in args:
-            data.append((key, val))
-        data = {k: v for k, v in data}
+        args, args_lists = args
 
-        for k in data.keys():
-            if k not in self.fields:
-                raise ValidationError(f'{k} is an invalid querystring argument.')
+        args = dict(args)
+        args_lists = dict(args_lists)
+        data = copy.deepcopy(args)
+
+        for key in args:
+            if key.endswith('[]'):
+                del data[key]
+                data[key[:-2]] = args_lists[key]
+
+        for key in data.keys():
+            if key not in self.fields:
+                raise ValidationError(f'{key} is an invalid querystring argument.')
 
         return data
 
