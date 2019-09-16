@@ -5,12 +5,15 @@
 #    pip-compile requirements.in
 #
 click==7.0                # via flask
-flask-exceptions==1.2.1
-flask==1.0.2              # via flask-exceptions
+flask-exceptions==1.2.3
+flask==1.1.1              # via flask-exceptions
 itsdangerous==1.1.0       # via flask
 jinja2==2.10.1
-markupsafe==1.1.0         # via jinja2
-marshmallow==3.0.0b13
-protobuf==3.6.1
-six==1.11.0               # via protobuf
-werkzeug==0.14.1          # via flask
+markupsafe==1.1.1         # via jinja2
+marshmallow==3.1.1
+protobuf==3.9.1
+six==1.11.0
+werkzeug==0.15.6          # via flask
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools==41.2.0        # via protobuf

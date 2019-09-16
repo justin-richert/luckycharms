@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name='luckycharms',
-    version='0.5.3',
+    version='0.5.4',
     url='https://github.com/justin-richert/luckycharms',
     download_url='https://github.com/justin-richert/luckycharms/archive/0.5.1.zip',
     license='MIT',
@@ -22,7 +22,7 @@ setup(
     platforms='any',
     install_requires=[
         'Flask',
-        'marshmallow==3.0.0b13'
+        'marshmallow==3.1.1'
     ],
     extras_require={
         'proto': 'protobuf'
