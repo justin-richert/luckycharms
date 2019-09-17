@@ -1,11 +1,11 @@
 """Base schema file."""
-# pylint: disable=no-self-use
+# pylint: disable=no-self-use,unused-argument
 import copy
 import json
 import os
 
 from flask import g, request
-from flask_exceptions.extension import BadRequest, UnsupportedMedia
+from flask_exceptions.extension import BadRequest
 from marshmallow import Schema, ValidationError
 from marshmallow import fields as _fields
 from marshmallow import (post_dump, post_load, pre_dump, pre_load,
@@ -37,7 +37,7 @@ SHOW_ERRORS = _SHOW_ERR_ENV_VAR in ['True', 'true']
 
 class ErrorHandlingSchema(Schema):
     """Base schema class that knows how to handle errors."""
-    def handle_error(self, error, data):
+    def handle_error(self, error, data, **kwargs):  # pylint: disable=arguments-differ
         """Overridden method to return 400s."""
         msg = ''
         # v may be a dictionary instead of a list
@@ -50,11 +50,7 @@ class ErrorHandlingSchema(Schema):
                 msg += '{}: {};'.format(key, val)
             msg = msg[:-1]
 
-        code = error.kwargs.get('error_code')
-        if code == 415:
-            raise UnsupportedMedia(message=msg)
-        else:
-            raise BadRequest(message=msg)
+        raise BadRequest(message=msg)
 
 
 class BaseModelSchema(ErrorHandlingSchema):
@@ -88,6 +84,7 @@ class BaseModelSchema(ErrorHandlingSchema):
 
     def __call__(self, decorated):
         """Make BaseModelSchema callable so it can be used as a decorator."""
+
         self._decorated = decorated  # pylint: disable=attribute-defined-outside-init
         return self.function_wrapper
 
@@ -96,12 +93,9 @@ class BaseModelSchema(ErrorHandlingSchema):
 
         # Workaround until marshmallow provides a way to specify fields at serialization time.
         self.context = {}
-        # only = None
-        self._types_seen = set()
         self.only = None
         # Load with querystring schemas for GET requests
         if request.method == 'GET':
-
             params = self.querystring_schema.load((request.args.items(), request.args.lists()))
 
             # Set serialization fields
@@ -166,7 +160,7 @@ class BaseModelSchema(ErrorHandlingSchema):
         return data
 
     @pre_load(pass_many=True)
-    def pre_load_func(self, data, many):  # pylint: disable=unused-argument
+    def pre_load_func(self, data, many, **kwargs):  # pylint: disable=unused-argument
         """Do initial load in of data from request depending on content type header."""
         if request.headers['Content-Type'].startswith('application/json'):
             try:
@@ -185,7 +179,7 @@ class BaseModelSchema(ErrorHandlingSchema):
 
     # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
     @post_dump(pass_many=True)
-    def post_dump_func(self, data, many):
+    def post_dump_func(self, data, many, **kwargs):
         """Format response depending on whether it is a resource or collection."""
         def handle_collections(data):
             """Format response according to whether its a collection or resource request."""
@@ -200,6 +194,16 @@ class BaseModelSchema(ErrorHandlingSchema):
                     }
                 else:
                     data = {'data': data}
+            return data
+
+        def handle_fields(data):
+            """Trim response fields down to requested fields."""
+            if data:
+                to_trim = data["data"] if many else [data]
+                if self.only:
+                    for entry in to_trim:
+                        for key in set(entry.keys()) - set(self.only):
+                            del entry[key]
             return data
 
         def handle_empty(data):
@@ -217,10 +221,10 @@ class BaseModelSchema(ErrorHandlingSchema):
                     data = transformer.dict_to_message(data).SerializeToString()
             return data
 
-        return process_for_mimetype(handle_empty(handle_collections(data)))
+        return process_for_mimetype(handle_empty(handle_fields(handle_collections(data))))
 
     @post_load
-    def post_load_func(self, data):
+    def post_load_func(self, data, **kwargs):
         """Implemented for convention."""
         return data
 
@@ -241,7 +245,7 @@ class QuerystringResource(ErrorHandlingSchema):
                     raise ValidationError('Invalid field: {}'.format(field))
 
     @pre_load
-    def parse_querystring(self, args):
+    def parse_querystring(self, args, **kwargs):
         """Parse arguments from querystring and validate that there aren't any extra args."""
         args, args_lists = args
 
@@ -271,12 +275,11 @@ class QuerystringCollection(QuerystringResource):
         ordering = kwargs.pop('ordering')
 
         super(QuerystringCollection, self).__init__(*args, **kwargs)
-
         if ordering:
             self.ordering = ordering
-            self.fields['order_by'] = _fields.Str(
+            self.fields['order_by'] = self.load_fields['order_by'] = _fields.Str(
                 missing=ordering[0][0])
-            self.fields['order'] = _fields.Str(
+            self.fields['order'] = self.load_fields['order'] = _fields.Str(
                 missing=ordering[0][1][0])
 
     page = _fields.Str(missing='1')
@@ -284,7 +287,7 @@ class QuerystringCollection(QuerystringResource):
                             validate=validate.Range(min=1, max=MAX_PAGE_SIZE))
 
     @validates('page')
-    def validate_page(self, data):
+    def validate_page(self, data, **kwargs):
         """Validate page, if passed, is positive."""
         if data != '*':
             try:
@@ -295,7 +298,7 @@ class QuerystringCollection(QuerystringResource):
                 raise ValidationError('Not a valid page.')
 
     @validates_schema(skip_on_field_errors=True)
-    def validate_all_pages(self, data):
+    def validate_all_pages(self, data, **kwargs):
         """Validate number of fields if page=* is passed."""
         unconditional_paging = False
         config = getattr(self, 'config', None)
@@ -309,8 +312,9 @@ class QuerystringCollection(QuerystringResource):
                     raise ValidationError('Maximum two fields allowed for page=*.')
 
     @validates_schema
-    def validate_ordering(self, data):
+    def validate_ordering(self, data, **kwargs):
         """Validate that order_by and order are valid."""
+
         if self.ordering:
             for entry in self.ordering:
                 matching_entry = entry if entry[0] == data['order_by'] else None
@@ -322,7 +326,7 @@ class QuerystringCollection(QuerystringResource):
                 raise ValidationError('Not a valid order for field.')
 
     @post_load
-    def convert_page_to_int(self, data):
+    def convert_page_to_int(self, data, **kwargs):
         """Cast page to an int (while handling '*')."""
         data['page'] = None if data['page'] == '*' else int(data['page'])
         return data

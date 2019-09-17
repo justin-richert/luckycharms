@@ -5,7 +5,7 @@ import os
 import flask
 import flask_exceptions
 import pytest
-from marshmallow import RAISE, Schema, ValidationError, fields, validates
+from marshmallow import RAISE, Schema, fields, validates_schema
 
 os.environ['LUCKYCHARMS_SHOW_ERRORS'] = 'true'
 
@@ -174,7 +174,6 @@ def test_marshmallow_parameters():
         dump_only=('a',),
         load_only=('b',),
         exclude=('c',),
-        prefix='test',
         unknown=RAISE
     )
     def business_logic(*args, **kwargs):
@@ -192,8 +191,8 @@ def test_marshmallow_parameters():
     with app.test_request_context('/'):
         result = business_logic()
         assert json.loads(result) == {
-            'testa': 1,
-            'testd': 1.243958
+            'a': 1,
+            'd': 1.243958
         }
 
     # Show that load only is respected (and because unknown is set to raise an error, this does so)
@@ -215,8 +214,8 @@ def test_marshmallow_parameters():
             ):
         result = business_logic()
         assert json.loads(result) == {
-            'testa': 1,
-            'testd': 1.01
+            'a': 1,
+            'd': 1.01
         }
 
     # if json is badly formed this should be a 400
@@ -565,9 +564,10 @@ def test_unsupported_media():
     class TestSchema(BaseModelSchema):
         a = fields.Int()
 
-        @validates('a')
-        def raise_unsupported_media_error(self, data):
-            raise ValidationError('Unsupported Media', error_code=415)
+        @validates_schema
+        def raise_unsupported_media_error(self, data, **kwargs):
+            raise flask_exceptions.UnsupportedMedia
+            # raise ValidationError('Unsupported Media', error_code=415)
 
     @TestSchema()
     def business_logic(*args, **kwargs):
@@ -579,7 +579,7 @@ def test_unsupported_media():
             data=json.dumps({'a': 1}),
             headers={'Content-Type': 'application/json'}
             ):
-        with pytest.raises(flask_exceptions.UnsupportedMedia):
+        with pytest.raises(flask_exceptions.extension.UnsupportedMedia):
             business_logic()
 
 
