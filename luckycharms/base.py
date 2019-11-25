@@ -137,7 +137,7 @@ class BaseModelSchema(ErrorHandlingSchema):
         many = kwargs.get('many')
         querystring_schema = None
 
-        if many and self.config['paged']:
+        if many:
             querystring_schema = self.config['querystring_schemas']['load_many']
             # Pass ordering info from Config class on schema
             ordering = []
