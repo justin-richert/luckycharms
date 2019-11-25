@@ -10,7 +10,7 @@ from marshmallow import RAISE, Schema, fields, validates_schema
 os.environ['LUCKYCHARMS_SHOW_ERRORS'] = 'true'
 
 from luckycharms.base import (BaseModelSchema,  # isort:skip  # noqa
-                              QuerystringCollection, QuerystringResource)
+                              QuerystringCollection, QuerystringResource)  # isort:skip
 
 
 try:
@@ -682,3 +682,41 @@ def test_proto_rendering():
         with pytest.raises(flask_exceptions.BadRequest) as excinfo:
             business_logic()
         assert excinfo.value.message == 'Invalid protocol buffer data'
+
+
+def test_unpaged_collection():
+    """Test unpaged collection."""
+
+    class PagedTestSchema(BaseModelSchema):
+        a = fields.Int()
+
+        config = {
+            "paged": True
+        }
+
+    @PagedTestSchema(many=True)
+    def business_logic(*args, **kwargs):
+        return [{"a": 1}] * 30
+
+    with app.test_request_context("/"):
+        result = json.loads(business_logic())
+    assert len(result["data"]) == 25
+    assert "page_size" in result
+    assert "next_page" in result
+
+    class UnpagedTestSchema(BaseModelSchema):
+        a = fields.Int()
+
+        config = {
+            "paged": False
+        }
+
+    @UnpagedTestSchema(many=True)
+    def business_logic(*args, **kwargs):
+        return [{"a": 1}] * 30
+
+    with app.test_request_context("/"):
+        result = json.loads(business_logic())
+    assert len(result["data"]) == 30
+    assert "page_size" not in result
+    assert "next_page" not in result

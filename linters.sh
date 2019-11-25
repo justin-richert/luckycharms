@@ -32,7 +32,7 @@ fi
 echo
 
 echo "> running isort..."
-isort -c --diff -sg venv*
+isort -c --diff -sg venv* -sg build*
 if [ $? != 0 ]; then
     exit 1
 else

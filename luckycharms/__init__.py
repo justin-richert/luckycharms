@@ -1,3 +1,7 @@
 """Import necessary items."""
-from .base import (BaseModelSchema, ErrorHandlingSchema,  # noqa
-                   QuerystringCollection, QuerystringResource)
+from .base import (  # noqa
+    BaseModelSchema,
+    ErrorHandlingSchema,
+    QuerystringCollection,
+    QuerystringResource,
+)

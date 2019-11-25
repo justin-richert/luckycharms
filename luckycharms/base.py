@@ -8,8 +8,15 @@ from flask import g, request
 from flask_exceptions.extension import BadRequest
 from marshmallow import Schema, ValidationError
 from marshmallow import fields as _fields
-from marshmallow import (post_dump, post_load, pre_dump, pre_load,
-                         validate, validates, validates_schema)
+from marshmallow import (
+    post_dump,
+    post_load,
+    pre_dump,
+    pre_load,
+    validate,
+    validates,
+    validates_schema,
+)
 
 try:
     from google.protobuf.message import DecodeError
@@ -73,7 +80,8 @@ class BaseModelSchema(ErrorHandlingSchema):
         if 'load' not in self.config['querystring_schemas']:
             self.config['querystring_schemas']['load'] = QuerystringResource
         if 'load_many' not in self.config['querystring_schemas']:
-            self.config['querystring_schemas']['load_many'] = QuerystringCollection
+            self.config['querystring_schemas']['load_many'] = QuerystringCollection \
+                if self.config["paged"] else UnpagedQuerystringCollection
 
         if self.config.get('protobuffers') and not PROTBUF_IMPORTED:
             raise Exception(
@@ -265,8 +273,8 @@ class QuerystringResource(ErrorHandlingSchema):
         return data
 
 
-class QuerystringCollection(QuerystringResource):
-    """Schema for collection querystrings."""
+class UnpagedQuerystringCollection(QuerystringResource):
+    """Schema for unpaged collection querystrings."""
 
     ordering = None
 
@@ -274,13 +282,31 @@ class QuerystringCollection(QuerystringResource):
         """Extend init function for QuerystringCollection to allow order and order_by as kwargs."""
         ordering = kwargs.pop('ordering')
 
-        super(QuerystringCollection, self).__init__(*args, **kwargs)
+        super(UnpagedQuerystringCollection, self).__init__(*args, **kwargs)
         if ordering:
             self.ordering = ordering
             self.fields['order_by'] = self.load_fields['order_by'] = _fields.Str(
                 missing=ordering[0][0])
             self.fields['order'] = self.load_fields['order'] = _fields.Str(
                 missing=ordering[0][1][0])
+
+    @validates_schema
+    def validate_ordering(self, data, **kwargs):
+        """Validate that order_by and order are valid."""
+
+        if self.ordering:
+            for entry in self.ordering:
+                matching_entry = entry if entry[0] == data['order_by'] else None
+                if matching_entry:
+                    break
+            if not matching_entry:
+                raise ValidationError('Not a valid field to order by.')
+            elif data['order'] not in matching_entry[1]:
+                raise ValidationError('Not a valid order for field.')
+
+
+class QuerystringCollection(UnpagedQuerystringCollection):
+    """Schema for collection querystrings."""
 
     page = _fields.Str(missing='1')
     page_size = _fields.Int(missing=MAX_PAGE_SIZE,
@@ -310,20 +336,6 @@ class QuerystringCollection(QuerystringResource):
                 fields = data['fields'].split(',')
                 if data['fields'] == '*' or len(fields) > 2:
                     raise ValidationError('Maximum two fields allowed for page=*.')
-
-    @validates_schema
-    def validate_ordering(self, data, **kwargs):
-        """Validate that order_by and order are valid."""
-
-        if self.ordering:
-            for entry in self.ordering:
-                matching_entry = entry if entry[0] == data['order_by'] else None
-                if matching_entry:
-                    break
-            if not matching_entry:
-                raise ValidationError('Not a valid field to order by.')
-            elif data['order'] not in matching_entry[1]:
-                raise ValidationError('Not a valid order for field.')
 
     @post_load
     def convert_page_to_int(self, data, **kwargs):
