@@ -4,4 +4,5 @@ from .base import (  # noqa
     ErrorHandlingSchema,
     QuerystringCollection,
     QuerystringResource,
+    UnpagedQuerystringCollection,
 )
