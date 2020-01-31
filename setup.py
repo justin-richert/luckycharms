@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name='luckycharms',
-    version='0.5.8',
+    version='0.5.9',
     url='https://github.com/justin-richert/luckycharms',
     download_url='https://github.com/justin-richert/luckycharms/archive/0.5.1.zip',
     license='MIT',

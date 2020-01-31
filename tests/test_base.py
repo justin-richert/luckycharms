@@ -659,7 +659,7 @@ def test_proto_rendering():
             data=proto.Test().dict_to_message({'a': 2, 'b': 'Two', 'c': False}).SerializeToString(),
             headers={
                 'Content-Type': 'application/octet-stream',
-                'Accepts': 'application/octet-stream'
+                'Accept': 'application/octet-stream'
             }):
         result = business_logic()
         assert isinstance(result, bytes)
@@ -677,7 +677,7 @@ def test_proto_rendering():
             data=proto_data[:-1],
             headers={
                 'Content-Type': 'application/octet-stream',
-                'Accepts': 'application/octet-stream'
+                'Accept': 'application/octet-stream'
             }):
         with pytest.raises(flask_exceptions.BadRequest) as excinfo:
             business_logic()
@@ -751,7 +751,7 @@ def test_proto_with_empty_request_body(*args, **kwargs):
             method='POST',
             headers={
                 'Content-Type': 'application/octet-stream',
-                'Accepts': 'application/octet-stream'
+                'Accept': 'application/octet-stream'
             }):
         result = business_logic()
         assert isinstance(result, bytes)
