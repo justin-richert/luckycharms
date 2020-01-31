@@ -170,19 +170,22 @@ class BaseModelSchema(ErrorHandlingSchema):
     @pre_load(pass_many=True)
     def pre_load_func(self, data, many, **kwargs):  # pylint: disable=unused-argument
         """Do initial load in of data from request depending on content type header."""
-        if request.headers['Content-Type'].startswith('application/json'):
-            try:
-                data = json.loads(data) if data else {}
-            except json.JSONDecodeError:
-                raise BadRequest(message='Invalid json data')
-        elif request.headers['Content-Type'].startswith(  # pragma: no branch
-                'application/octet-stream'):
-            transformer = self.config['protobuffers']['load_many'] if self.many \
-                else self.config['protobuffers']['load']
-            try:
-                data = transformer.proto_to_dict(data)
-            except DecodeError:
-                raise BadRequest(message='Invalid protocol buffer data')
+        if data:
+            if request.headers.get('Content-Type', '').startswith('application/json'):
+                try:
+                    data = json.loads(data)
+                except json.JSONDecodeError:
+                    raise BadRequest(message='Invalid json data')
+            elif request.headers.get('Content-Type', '').startswith(  # pragma: no branch
+                    'application/octet-stream'):
+                transformer = self.config['protobuffers']['load_many'] if self.many \
+                    else self.config['protobuffers']['load']
+                try:
+                    data = transformer.proto_to_dict(data)
+                except DecodeError:
+                    raise BadRequest(message='Invalid protocol buffer data')
+        else:
+            data = {}
         return data
 
     # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
@@ -221,9 +224,10 @@ class BaseModelSchema(ErrorHandlingSchema):
         def process_for_mimetype(data):
             """Serialize data per client mimetype request."""
             if data:
-                if g.content_type == 'application/json':
+                if request.headers.get("Accepts", "application/json") == 'application/json':
                     data = json.dumps(data)
-                elif g.content_type == 'application/octet-stream':  # pragma: no branch
+                elif request.headers.get("Accepts") == \
+                        'application/octet-stream':  # pragma: no branch
                     transformer = self.config['protobuffers']['dump_many'] if many \
                         else self.config['protobuffers']['dump']
                     data = transformer.dict_to_message(data).SerializeToString()

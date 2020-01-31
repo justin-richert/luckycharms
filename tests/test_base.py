@@ -720,3 +720,44 @@ def test_unpaged_collection():
     assert len(result["data"]) == 30
     assert "page_size" not in result
     assert "next_page" not in result
+
+
+def test_proto_with_empty_request_body(*args, **kwargs):
+
+    class TestSchema(BaseModelSchema):
+        a = fields.Int()
+        b = fields.String()
+        c = fields.Boolean()
+
+        config = {
+            'ordering': [
+                ('a', ('asc',))
+            ],
+            'protobuffers': {
+                'dump': proto.Test(),
+            }
+        }
+
+    @TestSchema()
+    def business_logic(*args, **kwargs):
+        return {
+            'a': 1,
+            'b': 'One',
+            'c': True
+        }
+
+    with app.test_request_context(
+            '/',
+            method='POST',
+            headers={
+                'Content-Type': 'application/octet-stream',
+                'Accepts': 'application/octet-stream'
+            }):
+        result = business_logic()
+        assert isinstance(result, bytes)
+        result = proto.Test().proto_to_dict(result)
+        assert result == {
+            'a': 1,
+            'b': 'One',
+            'c': True
+        }
