@@ -224,9 +224,9 @@ class BaseModelSchema(ErrorHandlingSchema):
         def process_for_mimetype(data):
             """Serialize data per client mimetype request."""
             if data:
-                if request.headers.get("Accepts", "application/json") == 'application/json':
+                if request.headers.get("Accept", "application/json") == 'application/json':
                     data = json.dumps(data)
-                elif request.headers.get("Accepts") == \
+                elif request.headers.get("Accept") == \
                         'application/octet-stream':  # pragma: no branch
                     transformer = self.config['protobuffers']['dump_many'] if many \
                         else self.config['protobuffers']['dump']
