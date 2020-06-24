@@ -185,7 +185,7 @@ class BaseModelSchema(ErrorHandlingSchema):
                 except DecodeError:
                     raise BadRequest(message='Invalid protocol buffer data')
         else:
-            data = {}
+            data = [] if many else {}
         return data
 
     # pylint: disable=unexpected-keyword-arg,no-value-for-parameter

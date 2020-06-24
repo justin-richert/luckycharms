@@ -761,3 +761,19 @@ def test_proto_with_empty_request_body(*args, **kwargs):
             'b': 'One',
             'c': True
         }
+
+
+def test_many_body(*args, **kwargs):
+
+    class TestSchema(BaseModelSchema):
+
+        a = fields.Int()
+        b = fields.String()
+        c = fields.Boolean()
+
+    @TestSchema(many=True)
+    def business_logic(**kwargs):
+        return [{"a": 1, "b": "One", "c": True}, {"a": 2, "b": "Two", "c": False}]
+
+    with app.test_request_context("/", method="PUT", headers={"Accept": "application/json"}):
+        business_logic()  # Not raising an exception is the test
