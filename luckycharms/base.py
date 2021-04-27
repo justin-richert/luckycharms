@@ -293,9 +293,9 @@ class UnpagedQuerystringCollection(QuerystringResource):
         if ordering:
             self.ordering = ordering
             self.fields['order_by'] = self.load_fields['order_by'] = _fields.Str(
-                missing=ordering[0][0])
+                data_key="order_by", attribute="order_by", missing=ordering[0][0])
             self.fields['order'] = self.load_fields['order'] = _fields.Str(
-                missing=ordering[0][1][0])
+                data_key="order", attribute="order", missing=ordering[0][1][0])
 
     @validates_schema
     def validate_ordering(self, data, **kwargs):
