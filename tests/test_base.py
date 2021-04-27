@@ -135,7 +135,7 @@ def test_querystring_schemas():
     class TestQuerystringSchema(QuerystringResource):
 
         a = fields.List(fields.String())
-        b = fields.String()
+        b_ = fields.String(data_key="b", attribute="b")
 
     class TestSchema(BaseModelSchema):
 

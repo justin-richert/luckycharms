@@ -271,8 +271,10 @@ class QuerystringResource(ErrorHandlingSchema):
                 del data[key]
                 data[key[:-2]] = args_lists[key]
 
+        field_names = {field.data_key or field.name for field in self.fields.values()}
+
         for key in data.keys():
-            if key not in self.fields:
+            if key not in field_names:
                 raise ValidationError(f'{key} is an invalid querystring argument.')
 
         return data
