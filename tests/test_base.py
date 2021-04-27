@@ -234,7 +234,7 @@ def test_marshmallow_hack():
     class TestSchema(BaseModelSchema):
         a = fields.Int()
         b = fields.String()
-        c = fields.Boolean()
+        c_ = fields.Boolean(data_key="c", attribute="c")  # show that adapted field names work
 
     @TestSchema()
     def business_logic(*args, **kwargs):
