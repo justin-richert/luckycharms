@@ -153,8 +153,9 @@ class BaseModelSchema(ErrorHandlingSchema):
             querystring_schema = self.config['querystring_schemas']['load']
             self.querystring_schema = querystring_schema()
 
-        self.querystring_schema.allowed_fields = set(self.fields) - \
-            set(self.exclude) - set(self.load_only)
+        self.querystring_schema.allowed_fields = {
+            field.data_key or field.name for field in self.fields.values()
+        } - set(self.exclude) - set(self.load_only)
 
     # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
     @pre_dump(pass_many=True)
